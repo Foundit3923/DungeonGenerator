@@ -123,9 +123,20 @@ public class BasicGenerator2D : MonoBehaviour
                     if (!((xPrime[1] && yPrime[1]) || (x[1] && y[1])))
                     {
                         result = false;
+                    } else
+                    {
+                        Debug.Log("One surrounds the other");
                     }
+                } else
+                {
+                    Debug.Log("Corner overlap found");
                 }
+            } else
+            {
+                Debug.Log("Intersection found");
             }
+            Debug.Log("Intersection result: " + result);
+
             return result;
         }
 
@@ -391,7 +402,7 @@ public class BasicGenerator2D : MonoBehaviour
             if (buffer.bounds.xMin < 0 || buffer.bounds.xMax >= size.x
                 || buffer.bounds.yMin < 0 || buffer.bounds.yMax >= size.y)
             {
-                outOfBounds = false;
+                outOfBounds = true;
             }
             else
             {
@@ -399,17 +410,21 @@ public class BasicGenerator2D : MonoBehaviour
                 {
                     if (Room.Intersect(room, buffer))
                     {
-                        Destroy(buffer.roomPrefab);
                         intersect = true;
+                        Debug.Log("Room #" + newRoom.roomId + " denied");
                         break;
-
+                    } else
+                    {
+                        Debug.Log("Room #" + newRoom.roomId + " accepted");
                     }
                 }
             }
 
 
-            if (!(intersect || outOfBounds))
+            if (intersect || outOfBounds)
             {
+                Destroy(buffer.roomPrefab);
+            } else { 
                 Debug.Log("(attached) Adding room #" + newRoom.roomId);
                 newRoom = buffer;
                 UpdateAnchors(newRoom.roomPrefab.transform, targetRoom);

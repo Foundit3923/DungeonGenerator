@@ -20,16 +20,18 @@ public class Generator2D : MonoBehaviour {
         Hallway
     }
 
-    class Room {
+    class Room
+    {
         public RectInt bounds;
         public GameObject roomPrefab, hitboxPrefab;
         public Vector2Int _location, _size, _hitSize;
         public int roomId, roomCollectionId;
         public Vector3 hitboxLocalScale, hitboxLoc, min, max, hitMin, hitMax;
         public float halfSizeX, halfSizeY, halfSizeHitX, halfSizeHitY;
-        public bool isRoomCollectionSet; 
+        public bool isRoomCollectionSet;
 
-        public Room(Vector2Int location, Vector2Int size) {
+        public Room(Vector2Int location, Vector2Int size)
+        {
 
             Construct(location, size);
         }
@@ -75,7 +77,8 @@ public class Generator2D : MonoBehaviour {
             return result;
         }
 
-        public static bool Intersect(Room existing, Room checking) {
+        public static bool Intersect(Room existing, Room checking)
+        {
             float a, b, c, d, aPrime, bPrime, cPrime, dPrime;
 
             a = existing.max.z;
@@ -119,8 +122,22 @@ public class Generator2D : MonoBehaviour {
                     {
                         result = false;
                     }
+                    else
+                    {
+                        Debug.Log("One surrounds the other");
+                    }
+                }
+                else
+                {
+                    Debug.Log("Corner overlap found");
                 }
             }
+            else
+            {
+                Debug.Log("Intersection found");
+            }
+            Debug.Log("Intersection result: " + result);
+
             return result;
         }
 
@@ -140,7 +157,8 @@ public class Generator2D : MonoBehaviour {
             if (n1 == n2)
             {
                 result = (toCheck == n1);
-            } else
+            }
+            else
             {
                 float top, bottom;
                 if (n1 > n2)
@@ -198,6 +216,7 @@ public class Generator2D : MonoBehaviour {
     List<Material> roomColorList;
     private HashSet<Transform> availableAnchors = new HashSet<Transform>();
     private HashSet<Vector3> availableAnchorPos = new HashSet<Vector3>();
+    private HashSet<Transform> inUseAnchors = new HashSet<Transform>();
 
     private List<Vector2Int> roomOptions = new List<Vector2Int>();
 
@@ -342,7 +361,7 @@ public class Generator2D : MonoBehaviour {
             "East",
             "West"
         };
-        List<Transform> newAnchors = target.GetComponentsInChildren<Transform>().ToList<Transform>();
+        List<Transform> newAnchors = target.GetComponentsInChildren<Transform>().Where(x => x.transform.childCount == 1).ToList<Transform>();
         List<Transform> modifiedAnchors = new List<Transform>();
         foreach (Transform transform in newAnchors)
         {
@@ -387,146 +406,115 @@ public class Generator2D : MonoBehaviour {
     {
 
         //Get a random anchor from the list of available anchors
-        Transform targetAnchor = GetRandomAvailablePosition();
-        Vector2Int location = new Vector2Int(
-        (int)targetAnchor.position.x,
-        (int)targetAnchor.position.z
-        );
-
-        //bool isAdjacent = false;
-        //Room adjacentRoom = null;
-
-        int rand = rand1.Next(0, roomOptions.Count);
-        Vector2Int roomSize = roomOptions[rand];
-        string targetAnchorOrientation = targetAnchor.parent.name;
-        Transform targetRoom = targetAnchor.parent.parent;
-        Transform targetParentRoom = targetAnchor.root;
-
-        bool intersect = false;
-        bool outOfBounds = false;
-        Room newRoom = new Room(location, roomSize);
-        Room buffer = new Room(location, roomSize);
-
-        buffer.roomId = placedRooms;
-        buffer.roomPrefab = PlaceAttachedRoomFromList(buffer.bounds.position, roomList[rand], roomColorList[rand], targetParentRoom.gameObject);
-        Vector3 originalForward = buffer.roomPrefab.transform.forward;
-        Transform sourceAnchor = GetRandomAnchor(buffer.roomPrefab);
-        string sourceAnchorOrientation = targetAnchor.parent.name;
-        AttachRoom(sourceAnchor, targetAnchor, buffer.roomPrefab.transform);
-        Vector2Int newLocation = new Vector2Int((int)buffer.roomPrefab.transform.position.x, (int)buffer.roomPrefab.transform.position.z);
-        if (buffer.roomPrefab.transform.forward != originalForward)
+        Transform targetAnchor = GetRandomAvailablePosition(availableAnchors);
+        if (targetAnchor != null)
         {
-            roomSize = new Vector2Int(roomSize.y, roomSize.y);
-        }
-        buffer.Reconstruct(newLocation, roomSize);
-        //buffer = new Room(newLocation, roomSize);
-        //buffer.roomPrefab = newRoom.roomPrefab;
-        //newRoom = buffer;
+            Vector2Int location = new Vector2Int(
+            (int)targetAnchor.position.x,
+            (int)targetAnchor.position.z
+            );
 
-        if (buffer.bounds.xMin < 0 || buffer.bounds.xMax >= size.x
-            || buffer.bounds.yMin < 0 || buffer.bounds.yMax >= size.y)
-        {
-            outOfBounds = false;
-        }
-        else
-        {
-            foreach (var room in rooms)
+            int rand = rand1.Next(0, roomOptions.Count);
+            Vector2Int roomSize = roomOptions[rand];
+            string targetAnchorOrientation = targetAnchor.parent.name;
+            Transform targetRoom = targetAnchor.parent.parent;
+            Transform targetParentRoom = targetAnchor.root;
+
+            bool intersect = false;
+            bool outOfBounds = false;
+            Room newRoom = new Room(location, roomSize);
+            Room buffer = new Room(location, roomSize);
+
+            buffer.roomId = placedRooms;
+            buffer.roomPrefab = PlaceAttachedRoomFromList(buffer.bounds.position, roomList[rand], roomColorList[rand], targetParentRoom.gameObject);
+            Vector3 originalForward = buffer.roomPrefab.transform.forward;
+            Transform sourceAnchor = GetRandomAnchor(buffer.roomPrefab);
+            string sourceAnchorOrientation = targetAnchor.parent.name;
+            AttachRoom(sourceAnchor, targetAnchor, buffer.roomPrefab.transform);
+            Vector2Int newLocation = new Vector2Int((int)buffer.roomPrefab.transform.position.x, (int)buffer.roomPrefab.transform.position.z);
+            if (buffer.roomPrefab.transform.forward != originalForward)
             {
-                if (Room.Intersect(room, buffer))
-                {
-                    Destroy(buffer.roomPrefab);
-                    intersect = false;
-                    break;
+                roomSize = new Vector2Int(roomSize.y, roomSize.y);
+            } //add reverse forward == -forward
+            buffer.Reconstruct(newLocation, roomSize);
 
+            if (buffer.bounds.xMin < 0 || buffer.bounds.xMax >= size.x
+                || buffer.bounds.yMin < 0 || buffer.bounds.yMax >= size.y)
+            {
+                outOfBounds = true;
+            }
+            else
+            {
+                foreach (var room in rooms)
+                {
+                    if (Room.Intersect(room, buffer))
+                    {
+                        intersect = true;
+                        Debug.Log("Room #" + newRoom.roomId + " denied");
+                        break;
+                    }
+                    else
+                    {
+                        Debug.Log("Room #" + newRoom.roomId + " accepted");
+                    }
+                }
+            }
+
+
+            if (intersect || outOfBounds)
+            {
+                Destroy(buffer.roomPrefab);
+            }
+            else
+            {
+                Debug.Log("(attached) Adding room #" + newRoom.roomId);
+                newRoom = buffer;
+                UpdateAnchors(newRoom.roomPrefab.transform, targetRoom);
+                CubeProperties cubeProperties = newRoom.roomPrefab.GetComponent<CubeProperties>();
+                Renderer anchorRender = sourceAnchor.GetComponentInChildren<Renderer>();
+                anchorRender.material.color = Color.black;
+                RandomWalk prop = sourceAnchor.GetComponent<RandomWalk>();
+                CubeProperties targetRoomProperties = targetRoom.gameObject.GetComponent<CubeProperties>();
+
+                anchorRender = targetAnchor.GetComponentInChildren<Renderer>();
+                prop = targetAnchor.GetComponent<RandomWalk>();
+                prop.associatedRoomID = newRoom.roomId;
+                prop.associatedRoomID = targetRoomProperties.roomId;
+                anchorRender.material.color = Color.magenta;
+
+                cubeProperties.max = newRoom.bounds.max;
+                cubeProperties.min = newRoom.bounds.min;
+                cubeProperties.position = newRoom._location;
+                placedRooms++;
+                cubeProperties.roomId = newRoom.roomId;
+                cubeProperties.roomCollectionId = newRoom.roomCollectionId;
+                rooms.Add(newRoom);
+
+
+                foreach (var pos in newRoom.bounds.allPositionsWithin)
+                {
+                    grid[pos] = CellType.Room;
                 }
             }
         }
-
-
-        if (!(intersect || outOfBounds))
+        else
         {
-            //newRoom.roomId = placedRooms;
-            //newRoom.roomPrefab = PlaceRoomFromList(newRoom.bounds.position, roomList[rand], roomColorList[rand]);
-            newRoom = buffer;
-            UpdateAnchors(newRoom.roomPrefab.transform, targetRoom);
-            CubeProperties cubeProperties = newRoom.roomPrefab.GetComponent<CubeProperties>();
-            //targetAnchor.gameObject.SetActive(false);
-            Renderer anchorRender = sourceAnchor.GetComponentInChildren<Renderer>();
-            anchorRender.material.color = Color.black;
-            RandomWalk prop = sourceAnchor.GetComponent<RandomWalk>();
-            prop.associatedRoomID = targetRoom.gameObject.GetComponent<CubeProperties>().roomId;
-            anchorRender = targetAnchor.GetComponentInChildren<Renderer>();
-            prop = targetAnchor.GetComponent<RandomWalk>();
-            prop.associatedRoomID = newRoom.roomId;
-            anchorRender.material.color = Color.magenta;
-            //buffer.roomPrefab = PlaceHitbox(new Vector3(0, -1, 0), newRoom.hitboxLocalScale, roomColorList[3]);
-            //buffer.roomPrefab.transform.SetParent(newRoom.roomPrefab.transform);
-            //buffer.roomPrefab.transform.localPosition = new Vector3(0, -1, 0);
-            //GameObject hitbox = PlaceHitbox(newRoom.hitboxLoc, newRoom.hitbox, roomColorList[3]);
-            //hitbox.transform.parent = newRoom.roomPrefab.gameObject.transform;
-            //CentreToParent(newRoom.roomPrefab, hitbox);
-            //newRoom.hitboxPrefab = hitbox;
-            //foreach (var room in rooms)
-            //{
-            //    if (Room.Adjacent(room, newRoom))
-            //    {
-            //        isAdjacent = true;
-            //        adjacentRoom = room;
-            //    }
-            //}
-            //if (!isAdjacent)
-            //{
-            //    //make new room collection
-            //    List<int> newRoomsList = new List<int>();
-            //    newRoomsList.Add(newRoom.roomId);
-            //    int roomCollectionId = roomCollectionDb.Count;
-            //    roomCollectionDb.Add(roomCollectionId, newRoomsList);
-            //    newRoom.roomCollectionId = roomCollectionId;
-            //}
-            //else
-            //{
-            //    //add to existing room collection
-            //    int roomCollectionId = adjacentRoom.roomCollectionId;
-            //    roomCollectionDb[roomCollectionId].Add(newRoom.roomId);
-            //    newRoom.roomCollectionId = roomCollectionId;
-            //    isAdjacent = false;
-            //}
-            cubeProperties.max = newRoom.bounds.max;
-            cubeProperties.min = newRoom.bounds.min;
-            cubeProperties.position = newRoom._location;
-            //newRoom.roomPrefab.GetComponent<CubeProperties>().amax = newRoom.adjacent.max;
-            //newRoom.roomPrefab.GetComponent<CubeProperties>().amin = newRoom.adjacent.min;
-            placedRooms++;
-            cubeProperties.roomId = newRoom.roomId;
-            cubeProperties.roomCollectionId = newRoom.roomCollectionId;
-            rooms.Add(newRoom);
-            //kdRooms.Add(newRoom.roomPrefab.GetComponent<RandomWalk>());
-
-
-            foreach (var pos in newRoom.bounds.allPositionsWithin)
-            {
-                grid[pos] = CellType.Room;
-            }
+            PlaceOneUnattachedRoom();
         }
     }
-
-    public void PlaceOneUnattachedRoom() 
-    {        
+    public void PlaceOneUnattachedRoom()
+    {
         Vector2Int location = new Vector2Int(
                 rand1.Next(0, size.x),
                 rand2.Next(0, size.y)
             );
-        bool isAdjacent = false;
-        Room adjacentRoom = null;
 
         int rand = rand1.Next(0, roomOptions.Count);
-        //Debug.Log("Rand: " + rand);
         Vector2Int roomSize = roomOptions[rand];
 
         bool add = true;
         Room newRoom = new Room(location, roomSize);
         Room buffer = new Room(location, roomSize);
-        //Room buffer = new Room(location + new Vector2Int(-1, -1), roomSize);
 
 
         if (newRoom.bounds.xMin < 0 || newRoom.bounds.xMax >= size.x
@@ -548,54 +536,23 @@ public class Generator2D : MonoBehaviour {
 
         if (add)
         {
+            Debug.Log("(unattached) Adding room #" + placedRooms);
             newRoom.roomId = placedRooms;
             newRoom.roomPrefab = PlaceRoomFromList(newRoom.bounds.position, roomList[rand], roomColorList[rand]);
             StoreAnchors(newRoom);
-            buffer.roomPrefab = PlaceHitbox(new Vector3(0,-1, 0), newRoom.hitboxLocalScale, roomColorList[3]);
+            buffer.roomPrefab = PlaceHitbox(new Vector3(0, -1, 0), newRoom.hitboxLocalScale, roomColorList[3]);
             buffer.roomPrefab.transform.SetParent(newRoom.roomPrefab.transform);
             buffer.roomPrefab.transform.localPosition = new Vector3(0, -1, 0);
-            //GameObject hitbox = PlaceHitbox(newRoom.hitboxLoc, newRoom.hitbox, roomColorList[3]);
-            //hitbox.transform.parent = newRoom.roomPrefab.gameObject.transform;
-            //CentreToParent(newRoom.roomPrefab, hitbox);
-            //newRoom.hitboxPrefab = hitbox;
-            //foreach (var room in rooms)
-            //{
-            //    if (Room.Adjacent(room, newRoom))
-            //    {
-            //        isAdjacent = true;
-            //        adjacentRoom = room;
-            //    }
-            //}
-            //if (!isAdjacent)
-            //{
-            //    //make new room collection
-            //    List<int> newRoomsList = new List<int>();
-            //    newRoomsList.Add(newRoom.roomId);
-            //    int roomCollectionId = roomCollectionDb.Count;
-            //    roomCollectionDb.Add(roomCollectionId, newRoomsList);
-            //    newRoom.roomCollectionId = roomCollectionId;
-            //}
-            //else
-            //{
-            //    //add to existing room collection
-            //    int roomCollectionId = adjacentRoom.roomCollectionId;
-            //    roomCollectionDb[roomCollectionId].Add(newRoom.roomId);
-            //    newRoom.roomCollectionId = roomCollectionId;
-            //    isAdjacent = false;
-            //}
             CubeProperties cubeProperties = newRoom.roomPrefab.GetComponent<CubeProperties>();
             cubeProperties.max = newRoom.bounds.max;
             cubeProperties.min = newRoom.bounds.min;
             cubeProperties.position = newRoom._location;
             cubeProperties.type = "attached";
-            //newRoom.roomPrefab.GetComponent<CubeProperties>().amax = newRoom.adjacent.max;
-            //newRoom.roomPrefab.GetComponent<CubeProperties>().amin = newRoom.adjacent.min;
             placedRooms++;
+
             cubeProperties.roomId = newRoom.roomId;
             cubeProperties.roomCollectionId = newRoom.roomCollectionId;
             rooms.Add(newRoom);
-            //kdRooms.Add(newRoom.roomPrefab.GetComponent<RandomWalk>());
-
 
             foreach (var pos in newRoom.bounds.allPositionsWithin)
             {
@@ -608,109 +565,8 @@ public class Generator2D : MonoBehaviour {
 
     void PlaceRooms() {
         for (int i = 0; i < roomCount; i++) {
-            Vector2Int location = new Vector2Int(
-                           rand1.Next(0, size.x),
-                           rand2.Next(0, size.y)
-                       );
-            bool isAdjacent = false;
-            Room adjacentRoom = null;
-
-            int rand = rand1.Next(0, roomOptions.Count);
-            //Debug.Log("Rand: " + rand);
-            Vector2Int roomSize = roomOptions[rand];
-
-            bool add = true;
-            Room newRoom = new Room(location, roomSize);
-            Room buffer = new Room(location, roomSize);
-            //Room buffer = new Room(location + new Vector2Int(-1, -1), roomSize);
-
-
-            if (newRoom.bounds.xMin < 0 || newRoom.bounds.xMax >= size.x
-                || newRoom.bounds.yMin < 0 || newRoom.bounds.yMax >= size.y)
-            {
-                add = false;
-            }
-            else
-            {
-                foreach (var room in rooms)
-                {
-                    if (Room.Intersect(room, buffer))
-                    {
-                        add = false;
-                        break;
-                    }
-                }
-            }
-
-            if (add)
-            {
-                newRoom.roomId = placedRooms;
-                newRoom.roomPrefab = PlaceRoomFromList(newRoom.bounds.position, roomList[rand], roomColorList[rand]);
-                StoreAnchors(newRoom);
-                buffer.roomPrefab = PlaceHitbox(new Vector3(0, -1, 0), newRoom.hitboxLocalScale, roomColorList[3]);
-                buffer.roomPrefab.transform.SetParent(newRoom.roomPrefab.transform);
-                buffer.roomPrefab.transform.localPosition = new Vector3(0, -1, 0);
-                //GameObject hitbox = PlaceHitbox(newRoom.hitboxLoc, newRoom.hitbox, roomColorList[3]);
-                //hitbox.transform.parent = newRoom.roomPrefab.gameObject.transform;
-                //CentreToParent(newRoom.roomPrefab, hitbox);
-                //newRoom.hitboxPrefab = hitbox;
-                //foreach (var room in rooms)
-                //{
-                //    if (Room.Adjacent(room, newRoom))
-                //    {
-                //        isAdjacent = true;
-                //        adjacentRoom = room;
-                //    }
-                //}
-                //if (!isAdjacent)
-                //{
-                //    //make new room collection
-                //    List<int> newRoomsList = new List<int>();
-                //    newRoomsList.Add(newRoom.roomId);
-                //    int roomCollectionId = roomCollectionDb.Count;
-                //    roomCollectionDb.Add(roomCollectionId, newRoomsList);
-                //    newRoom.roomCollectionId = roomCollectionId;
-                //}
-                //else
-                //{
-                //    //add to existing room collection
-                //    int roomCollectionId = adjacentRoom.roomCollectionId;
-                //    roomCollectionDb[roomCollectionId].Add(newRoom.roomId);
-                //    newRoom.roomCollectionId = roomCollectionId;
-                //    isAdjacent = false;
-                //}
-                newRoom.roomPrefab.GetComponent<CubeProperties>().max = newRoom.bounds.max;
-                newRoom.roomPrefab.GetComponent<CubeProperties>().min = newRoom.bounds.min;
-                newRoom.roomPrefab.GetComponent<CubeProperties>().type = "unattached";
-                //newRoom.roomPrefab.GetComponent<CubeProperties>().amax = newRoom.adjacent.max;
-                //newRoom.roomPrefab.GetComponent<CubeProperties>().amin = newRoom.adjacent.min;
-                placedRooms++;
-                newRoom.roomPrefab.GetComponent<CubeProperties>().roomId = newRoom.roomId;
-                newRoom.roomPrefab.GetComponent<CubeProperties>().roomCollectionId = newRoom.roomCollectionId;
-                rooms.Add(newRoom);
-                //kdRooms.Add(newRoom.roomPrefab.GetComponent<RandomWalk>());
-
-
-                foreach (var pos in newRoom.bounds.allPositionsWithin)
-                {
-                    grid[pos] = CellType.Room;
-                }
-            }
+            PlaceOneRoom();
         }
-    }
-
-    Transform GetRandomLocalAnchor(Room newRoom)
-    {
-        List<Transform> newAnchors = newRoom.roomPrefab.GetComponentsInChildren<Transform>().ToList<Transform>();
-        foreach (Transform transform in newAnchors)
-        {
-            //Don't keep the positions of each box, just their anchors
-            if (transform.position == newRoom.roomPrefab.transform.position)
-            {
-                newAnchors.Remove(transform);
-            }
-        }
-        return newAnchors[UnityEngine.Random.Range(0, newAnchors.Count)];
     }
 
     void StoreAnchors(Room newRoom)
@@ -724,112 +580,6 @@ public class Generator2D : MonoBehaviour {
                 availableAnchors.Add(transform);
             }                
         }
-    }
-
-    void UpdateAnchors(Transform sourceRoom, Transform targetRoom)
-    {
-        //Remove unavailable anchors and add new anchors
-        List<string> names = new List<string>()
-        {
-            "North",
-            "South",
-            "East",
-            "West"
-        };
-        List<Transform> sourceAnchors = sourceRoom.GetComponentsInChildren<Transform>().ToList<Transform>();
-        List<Transform> targetAnchors = targetRoom.GetComponentsInChildren<Transform>().ToList<Transform>();
-        List<Transform> freeAnchors = availableAnchors.ToList<Transform>();
-        List<Transform> anchorBuffer = new List<Transform>();
-
-        foreach (Transform anchor in sourceAnchors)
-        {
-            if (!(anchor.position == sourceRoom.position || names.Contains(anchor.name)))
-            {
-                anchorBuffer.Add(anchor);
-            }
-        }
-        foreach (Room room in rooms)
-        {
-            foreach (Transform sourceAnchor in anchorBuffer)
-            {
-                if (CheckAnchorInBounds(sourceAnchor))
-                {
-                    if (!freeAnchors.Contains(sourceAnchor))
-                    {
-                        Room source = new Room(new Vector2Int((int)sourceAnchor.position.x, (int)sourceAnchor.position.z), new Vector2Int(1, 1));
-                        if (!Room.Intersect(room, source))
-                        {
-                            freeAnchors.Add(sourceAnchor);
-                        }
-                    }
-                }
-            }
-            foreach (Transform targetAnchor in targetAnchors)
-            {
-                Room target = new Room(new Vector2Int((int)targetAnchor.position.x, (int)targetAnchor.position.z), new Vector2Int(1, 1));
-                if (Room.Intersect(room, target))
-                {
-                    if (freeAnchors.Contains(targetAnchor))
-                    {
-                        freeAnchors.Remove(targetAnchor);
-                    }
-                }
-            }
-        }
-
-        //foreach (Transform transform in freeAnchors)
-        //{
-        //    //Add new anchors
-        //    if (!availableAnchors.Contains(transform) && !availableAnchorPos.Contains(transform.position) && CheckAnchorInBounds(transform))
-        //    {
-        //        availableAnchors.Add(transform);
-        //        availableAnchorPos.Add(transform.position);
-        //    }
-        //}
-    }
-
-    bool CheckAnchorInBounds(Transform anchor)
-    {
-        Room anchorRoom = new Room(new Vector2Int((int)anchor.position.x, (int)anchor.position.z), new Vector2Int(1,1));
-        bool inBounds = true;
-        if (
-            anchorRoom.bounds.xMin < 0 || anchorRoom.bounds.xMax >= size.x
-            || anchorRoom.bounds.yMin < 0 || anchorRoom.bounds.yMax >= size.y)
-        {
-            inBounds = false;
-        }
-        return inBounds;
-    }
-
-    private Transform GetRandomAvailablePosition()
-    {
-        // Get a random position from the occupied positions set
-        List<Transform> availableAnchorsList = new List<Transform>(availableAnchors);
-        return availableAnchorsList[UnityEngine.Random.Range(0, availableAnchorsList.Count)];
-    }
-
-    void CentreToParent(GameObject parent, GameObject child)
-    {
-
-        float x = 0f;
-        float z = 0f;
-        Debug.Log(parent.transform.localScale);
-        if (parent.transform.localScale.z == 2f)
-        {
-            x = -0.5f;
-            z = -0.5f;
-        }
-        else if (parent.transform.localScale.z == 3f)
-        {
-            x = -0.5f;
-            z = -0.25f;
-        }
-        else if (parent.transform.localScale.z == 4f)
-        {
-            x = -0.25f;
-            z = -0.25f;
-        }
-        child.transform.localPosition = new Vector3(x, child.transform.localPosition.y, z);
     }
 
     void Triangulate() {
@@ -952,6 +702,111 @@ public class Generator2D : MonoBehaviour {
         return go;
     }
 
+    void UpdateAnchors(Transform sourceRoom, Transform targetRoom)
+    {
+        //Remove unavailable anchors and add new anchors
+        List<string> names = new List<string>()
+        {
+            "North",
+            "South",
+            "East",
+            "West"
+        };
+        List<Transform> sourceAnchors = sourceRoom.GetComponentsInChildren<Transform>().Where(x => x.childCount == 1).ToList<Transform>();
+        List<Transform> targetAnchors = targetRoom.GetComponentsInChildren<Transform>().Where(x => x.childCount == 1).ToList<Transform>();
+        List<Transform> freeAnchors = availableAnchors.ToList<Transform>();
+        List<Transform> anchorBuffer = new List<Transform>();
+
+        foreach (Transform anchor in sourceAnchors)
+        {
+            if (!(anchor.position == sourceRoom.position || names.Contains(anchor.name)))
+            {
+                anchorBuffer.Add(anchor);
+            }
+        }
+        foreach (Room room in rooms)
+        {
+            foreach (Transform sourceAnchor in anchorBuffer)
+            {
+                if (CheckAnchorInBounds(sourceAnchor))
+                {
+                    if (!freeAnchors.Contains(sourceAnchor))
+                    {
+                        Room source = new Room(new Vector2Int((int)sourceAnchor.position.x, (int)sourceAnchor.position.z), new Vector2Int(1, 1));
+                        if (!Room.Intersect(room, source))
+                        {
+                            freeAnchors.Add(sourceAnchor);
+                        }
+                    }
+                }
+            }
+            foreach (Transform targetAnchor in targetAnchors)
+            {
+                Room target = new Room(new Vector2Int((int)targetAnchor.position.x, (int)targetAnchor.position.z), new Vector2Int(1, 1));
+                if (Room.Intersect(room, target))
+                {
+                    if (freeAnchors.Contains(targetAnchor))
+                    {
+                        freeAnchors.Remove(targetAnchor);
+                    }
+                }
+            }
+        }
+
+        //foreach (Transform transform in freeAnchors)
+        //{
+        //    //Add new anchors
+        //    if (!availableAnchors.Contains(transform) && !availableAnchorPos.Contains(transform.position) && CheckAnchorInBounds(transform))
+        //    {
+        //        availableAnchors.Add(transform);
+        //        availableAnchorPos.Add(transform.position);
+        //    }
+        //}
+    }
+
+
+    bool CheckAnchorInBounds(Transform anchor)
+    {
+        Room anchorRoom = new Room(new Vector2Int((int)anchor.position.x, (int)anchor.position.z), new Vector2Int(1, 1));
+        bool inBounds = true;
+        if (
+            anchorRoom.bounds.xMin < 0 || anchorRoom.bounds.xMax >= size.x
+            || anchorRoom.bounds.yMin < 0 || anchorRoom.bounds.yMax >= size.y)
+        {
+            inBounds = false;
+        }
+        return inBounds;
+    }
+
+    private Transform GetRandomAvailablePosition(HashSet<Transform> availableAnchors)
+    {
+        Transform result;
+        // Get a random position from the occupied positions set
+
+        HashSet<Transform> temp = availableAnchors;
+        temp.ExceptWith(inUseAnchors);
+        List<Transform> availableAnchorsList = new List<Transform>(temp);
+        Transform potentialAnchor = availableAnchorsList[UnityEngine.Random.Range(0, availableAnchorsList.Count)];
+
+        if (inUseAnchors.Contains(potentialAnchor))
+        {
+            temp.Remove(potentialAnchor);
+            if (temp.Count > 0)
+            {
+                result = GetRandomAvailablePosition(temp);
+            }
+            else
+            {
+                result = null;
+            }
+        }
+        else
+        {
+            result = potentialAnchor;
+        }
+        return result;
+    }
+
     GameObject PlaceSpecificRoom(Vector2Int location, GameObject room, Material material, GameObject parent)
     {
 
@@ -994,10 +849,5 @@ public class Generator2D : MonoBehaviour {
     void PlaceHallway(Vector2Int location) {
         GameObject go = PlaceCube(location, new Vector2Int(1, 1), blueMaterial);
         go.GetComponent<CubeProperties>().isHallway = true;
-    }
-
-    void CombineCubes()
-    {
-
     }
 }

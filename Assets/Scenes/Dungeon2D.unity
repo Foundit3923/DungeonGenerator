@@ -344,13 +344,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 203877983}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0763b230d22fd334bbc9441aed267b70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  size: {x: 15, y: 15}
-  roomCount: 1000
+  size: {x: 20, y: 20}
+  roomCount: 10000
   roomMaxSize: {x: 5, y: 8}
   cubePrefab: {fileID: 7415050535990569633, guid: 3fb4ddafbd160274ba8f07a1cf8cd5ee,
     type: 3}
@@ -387,7 +387,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 203877983}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: aa0da7b6fd2813b44b535c07bb1b0099, type: 3}
   m_Name: 
@@ -408,6 +408,7 @@ MonoBehaviour:
   - {fileID: 7415050535990569633, guid: 6b7816e13131e8e4e836d3d4deca841f, type: 3}
   roomParentPrefab: {fileID: 7079090470155075485, guid: a7618549387760d43b5ce1d2dc654237,
     type: 3}
+  placedRooms: 0
 --- !u!1 &589237756
 GameObject:
   m_ObjectHideFlags: 0

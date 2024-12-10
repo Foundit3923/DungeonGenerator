@@ -15,7 +15,7 @@ public class StartGen : MonoBehaviour
         {
             if (myButton.name == "PlaceRoomsBtn")
             {
-                generator.GetComponent<BasicGenerator2D>().StartPlaceRooms();
+                generator.GetComponent<Generator2D>().StartPlaceRooms();
             }
             else if (myButton.name == "FindClosestBtn")
             {
@@ -23,11 +23,11 @@ public class StartGen : MonoBehaviour
             }
             else if (myButton.name == "SetupBtn")
             {
-                generator.GetComponent<BasicGenerator2D>().Setup();
+                generator.GetComponent<Generator2D>().Setup();
             }
             else if (myButton.name == "PlaceOneRoomBtn")
             {
-                generator.GetComponent<BasicGenerator2D>().PlaceOneRoom();
+                generator.GetComponent<Generator2D>().PlaceOneRoom();
             }
             else if (myButton.name == "TriangulateBtn")
             {
